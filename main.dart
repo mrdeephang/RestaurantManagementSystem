@@ -3,6 +3,7 @@ import 'models/inventory_item.dart';
 import 'models/menu_item.dart';
 import 'models/table.dart';
 import 'models/user.dart';
+import 'services/attendance_service.dart';
 import 'services/auth_service.dart';
 import 'services/billing_service.dart';
 import 'services/inventory_service.dart';
@@ -10,18 +11,19 @@ import 'services/menu_service.dart';
 import 'services/order_service.dart';
 import 'services/report_service.dart';
 import 'services/table_service.dart';
+import 'services/transfer_service.dart';
 
+//MAIN FUNCTION
 void main() async {
   try {
-    _initializeSystem();
+    _initializeSystem(); //Loads Data from Data Storage
     _clearScreen();
     _printWelcome();
 
-    // Authentication
+    // USER Authentication
     final user = await _authenticateUser();
     _clearScreen();
     print('Welcome, ${user.username} (${user.role.toUpperCase()})!\n');
-
     // Role-based routing
     switch (user.role) {
       case 'admin':
@@ -42,8 +44,7 @@ void main() async {
   }
 }
 
-/*AUTHENTICATION*/
-
+/*AUTHENTICATION FUNCTION For LogIn INPUT*/
 Future<User> _authenticateUser() async {
   while (true) {
     try {
@@ -64,13 +65,16 @@ Future<User> _authenticateUser() async {
 }
 
 /*ADMIN MENU SYSTEM*/
-
 Future<void> _adminMainMenu() async {
+  _clearScreen();
   const options = [
+    'Take Attendance',
     'Manage Menu',
     'Manage Tables',
     'Manage Inventory',
     'Generate Reports',
+    'View Branch Inventory',
+    'Handle Transfer',
     'Exit System',
   ];
 
@@ -81,79 +85,37 @@ Future<void> _adminMainMenu() async {
 
     switch (choice) {
       case 1:
+        await _takeattendance();
+        break;
+      case 2:
         await _menuManagement();
         break;
-      case 2:
+      case 3:
         await _tableManagement();
         break;
-      case 3:
+      case 4:
         await _inventoryManagement();
         break;
-      case 4:
+      case 5:
         await _reportManagement();
         break;
-      case 5:
+      case 6:
+        await _viewBranchInventory();
+        ;
+        break;
+      case 7:
+        await _handleTransfer();
+        break;
+      case 8:
         _confirmExit();
         break;
     }
   }
 }
 
-/*CASHIER MENU SYSTEM*/
-
-Future<void> _cashierMainMenu() async {
-  const options = ['View Active Orders', 'Generate Bill', 'Exit'];
-
-  while (true) {
-    _clearScreen();
-    _printHeader('CASHIER DASHBOARD');
-    final choice = _showMenu(options);
-
-    switch (choice) {
-      case 1:
-        await _viewActiveOrders();
-        break;
-      case 2:
-        await _generateBill();
-        break;
-      case 3:
-        _confirmExit();
-        break;
-    }
-  }
-}
-
-/*WAITER MENU SYSTEM*/
-
-Future<void> _waiterMainMenu() async {
-  const options = ['View Table Status', 'Book Table', 'Take Order', 'Exit'];
-
-  while (true) {
-    _clearScreen();
-    _printHeader('WAITER DASHBOARD');
-    final choice = _showMenu(options);
-
-    switch (choice) {
-      case 1:
-        await _viewTableStatus();
-        break;
-      case 2:
-        await _bookTable();
-        break;
-      case 3:
-        await _takeOrder();
-        break;
-      case 4:
-        _confirmExit();
-        break;
-    }
-  }
-}
-
-/*CORE OPERATIONS*/
-
-Future<void> _menuManagement() async {
-  const options = ['View Menu', 'Add Menu Item', 'Toggle Availability', 'Back'];
+/*OPERATION FOR TAKING ATTENDANCE*/
+Future<void> _takeattendance() async {
+  const options = ['Check-In', 'Check-Out', 'Back'];
 
   while (true) {
     _clearScreen();
@@ -162,8 +124,62 @@ Future<void> _menuManagement() async {
 
     switch (choice) {
       case 1:
+        await _checkin();
+        break;
+      case 2:
+        await _checkout();
+        break;
+      case 3:
+        return;
+    }
+  }
+}
+
+/*SUBOPERATION FOR ATTENDANCE*/
+Future<void> _checkin() async {
+  _clearScreen();
+  _printHeader('CHECK IN');
+
+  try {
+    final staffId = _promptForString('Enter your staff ID:', required: true);
+    final name = _promptForString('Enter your name:', required: true);
+
+    await AttendanceService.checkIn(staffId, name);
+    print('\n✅ Checked in successfully!');
+  } catch (e) {
+    print('\n❌ Error: ${e.toString()}');
+  }
+
+  _pressEnterToContinue();
+}
+
+Future<void> _checkout() async {
+  _clearScreen();
+  _printHeader('CHECK OUT');
+
+  try {
+    final staffId = _promptForString('Enter your staff ID:', required: true);
+    await AttendanceService.checkOut(staffId);
+    print('\n✅ Checked out successfully at ${DateTime.now()}');
+  } catch (e) {
+    _showError('Check Out Failed', e.toString());
+  }
+
+  _pressEnterToContinue();
+}
+
+/*OPERATION OF MENUMANAGEMENT*/
+Future<void> _menuManagement() async {
+  _clearScreen();
+  const options = ['View Menu', 'Add Menu Item', 'Toggle Availability', 'Back'];
+  while (true) {
+    _clearScreen();
+    _printHeader('MENU MANAGEMENT');
+    final choice = _showMenu(options);
+
+    switch (choice) {
+      case 1:
         await _displayFullMenu();
-        _pressEnterToContinue();
         break;
       case 2:
         await _addMenuItem();
@@ -177,84 +193,7 @@ Future<void> _menuManagement() async {
   }
 }
 
-Future<void> _tableManagement() async {
-  const options = ['View All Tables', 'Add New Table', 'Back'];
-
-  while (true) {
-    _clearScreen();
-    _printHeader('TABLE MANAGEMENT');
-    final choice = _showMenu(options);
-
-    switch (choice) {
-      case 1:
-        await _viewAllTables();
-        _pressEnterToContinue();
-        break;
-      case 2:
-        await _addNewTable();
-        break;
-      case 3:
-        return;
-    }
-  }
-}
-
-Future<void> _inventoryManagement() async {
-  const options = [
-    'View Inventory',
-    'Add Inventory Item',
-    'Update Stock',
-    'Back',
-  ];
-
-  while (true) {
-    _clearScreen();
-    _printHeader('INVENTORY MANAGEMENT');
-    final choice = _showMenu(options);
-
-    switch (choice) {
-      case 1:
-        await _viewInventory();
-        _pressEnterToContinue();
-        break;
-      case 2:
-        await _addInventoryItem();
-        break;
-      case 3:
-        await _updateInventoryItem();
-        break;
-      case 4:
-        return;
-    }
-  }
-}
-
-Future<void> _reportManagement() async {
-  const options = ['Daily Sales Report', 'Inventory Report', 'Back'];
-
-  while (true) {
-    _clearScreen();
-    _printHeader('REPORT GENERATION');
-    final choice = _showMenu(options);
-
-    switch (choice) {
-      case 1:
-        await ReportService.generateDailyReport();
-        print('\nReport generated in data/');
-        _pressEnterToContinue();
-        break;
-      case 2:
-        await ReportService.generateInventoryReport();
-        print('\nReport generated in data/');
-        _pressEnterToContinue();
-        break;
-      case 3:
-        return;
-    }
-  }
-}
-
-/* OPERATION IMPLEMENTATIONS*/
+/*SUB OPERATIONS OF MENU MANAGEMENT BY ADMIN*/
 Future<void> _displayFullMenu() async {
   final menu = await MenuService.getMenu();
   _clearScreen();
@@ -298,6 +237,37 @@ Future<void> _toggleMenuItemAvailability() async {
   _pressEnterToContinue();
 }
 
+/* OPERATION OF TABLE MANAGEMENT*/
+Future<void> _tableManagement() async {
+  const options = [
+    'View All Tables',
+    'Add New Table',
+    'View Active Tables'
+        'Back',
+  ];
+
+  while (true) {
+    _clearScreen();
+    _printHeader('TABLE MANAGEMENT');
+    final choice = _showMenu(options);
+
+    switch (choice) {
+      case 1:
+        await _viewAllTables();
+        break;
+      case 2:
+        await _addNewTable();
+        break;
+      case 3:
+        await _viewAllTables();
+        break;
+      case 4:
+        return;
+    }
+  }
+}
+
+/*SUB OPERATIONS OF TABLE MANAGEMENT BY ADMIN*/
 Future<void> _viewAllTables() async {
   final tables = await TableService.loadTables();
   _clearScreen();
@@ -314,6 +284,7 @@ Future<void> _viewAllTables() async {
       '${table.orders.length} items',
     );
   }
+  _pressEnterToContinue();
 }
 
 Future<void> _addNewTable() async {
@@ -324,10 +295,11 @@ Future<void> _addNewTable() async {
   final capacity = _promptForInt('Enter table capacity:');
 
   await TableService.addTable(Table(id: id, capacity: capacity));
-  print('\n✅ Table added successfully!');
+  print('\nTable added successfully!✅');
   _pressEnterToContinue();
 }
 
+/*IT CAN BE REUSED FOR WAITER TOO */
 Future<void> _viewActiveOrders() async {
   final tables = await TableService.loadTables();
   final activeTables = tables
@@ -356,6 +328,408 @@ Future<void> _viewActiveOrders() async {
   _pressEnterToContinue();
 }
 
+/* OPERATION OF INVENTORY MANAGEMENT BY ADMIN*/
+Future<void> _inventoryManagement() async {
+  _clearScreen();
+  final branches = await TransferService.getAvailableBranches();
+  if (branches.isEmpty) {
+    print('No branches found');
+    _pressEnterToContinue();
+    return;
+  }
+  print('Select Branch for Inventory Management:');
+  // branches.forEach((branch) {
+  //   print(branch);
+  // });
+  for (int i = 0; i < branches.length; i++) {
+    print('${i + 1}. ${branches[i]}');
+  }
+  final branchIndex =
+      _promptForInt('\nEnter choice:', min: 1, max: branches.length) - 1;
+  final selectedBranch = branches[branchIndex];
+  const options = [
+    'View Inventory',
+    'Add Inventory Item',
+    'Update Stock',
+    'Remove Item',
+    'Back',
+  ];
+
+  while (true) {
+    _clearScreen();
+    _printHeader('INVENTORY MANAGEMENT - ${selectedBranch.toUpperCase()}');
+    final choice = _showMenu(options);
+
+    switch (choice) {
+      case 1:
+        await _viewInventory(selectedBranch);
+        break;
+      case 2:
+        await _addInventoryItem(selectedBranch);
+        break;
+      case 3:
+        await _updateInventoryItem(selectedBranch);
+        break;
+      case 4:
+        await _removeInventoryItem(selectedBranch);
+        break;
+      case 5:
+        return;
+    }
+  }
+}
+
+Future<void> _viewInventory(String branch) async {
+  final inventory = await InventoryService.getInventory(branch);
+  _clearScreen();
+  _printHeader('CURRENT INVENTORY - ${branch.toUpperCase()}');
+
+  print('Item                Quantity  Unit');
+  print('-' * 40);
+
+  for (final item in inventory) {
+    print(
+      '${item.item.padRight(20)} '
+      '${item.quantity.toString().padLeft(8)}  '
+      '${item.unit}',
+    );
+  }
+}
+
+Future<void> _addInventoryItem(String branch) async {
+  _clearScreen();
+  _printHeader('ADD INVENTORY ITEM - ${branch.toUpperCase()}');
+
+  final item = _promptForString('Item name:', required: true);
+  final quantity = _promptForInt('Initial quantity:');
+  final unit = _promptForString('Unit (e.g., kg, liters):', required: true);
+
+  try {
+    await InventoryService.addItem(
+      branch,
+      InventoryItem(item: item, quantity: quantity, unit: unit),
+    );
+    print('\nItem added to inventory! ✅');
+  } catch (e) {
+    print('\n❌ Error: ${e.toString()}');
+  }
+  _pressEnterToContinue();
+}
+
+Future<void> _updateInventoryItem(String branch) async {
+  final inventory = await InventoryService.getInventory(branch);
+  if (inventory.isEmpty) {
+    print('No inventory items found');
+    _pressEnterToContinue();
+    return;
+  }
+
+  _clearScreen();
+  _printHeader('UPDATE INVENTORY - ${branch.toUpperCase()}');
+  await _viewInventory(branch);
+
+  final itemName = _promptForString(
+    '\nEnter item name to update:',
+    required: true,
+  );
+
+  // Show current quantity
+  final currentItem = inventory.firstWhere(
+    (i) => i.item.toLowerCase() == itemName.toLowerCase(),
+  );
+  final adjustment = _promptForInt(
+    'Enter quantity change (+ to add, - to subtract):',
+  );
+
+  try {
+    await InventoryService.updateQuantity(branch, itemName, adjustment);
+    final newQuantity = currentItem.quantity + adjustment;
+    print(
+      '\n✅ Updated: ${currentItem.item} = $newQuantity ${currentItem.unit}',
+    );
+  } catch (e) {
+    print('\n❌ Error: ${e.toString()}');
+  }
+
+  _pressEnterToContinue();
+}
+
+Future<void> _removeInventoryItem(String branch) async {
+  final inventory = await InventoryService.getInventory(branch);
+  if (inventory.isEmpty) {
+    print('No inventory items found');
+    _pressEnterToContinue();
+    return;
+  }
+
+  _clearScreen();
+  _printHeader('REMOVE ITEM - ${branch.toUpperCase()}');
+  await _viewInventory(branch);
+
+  final itemName = _promptForString(
+    '\nEnter item name to remove:',
+    required: true,
+  );
+
+  try {
+    await InventoryService.removeItem(branch, itemName);
+    print('\nItem removed from inventory! ✅');
+  } catch (e) {
+    print('\n❌ Error: ${e.toString()}');
+  }
+  _pressEnterToContinue();
+}
+
+/* OPERATION OF REPORT MANAGEMENT BY ADMIN*/
+Future<void> _reportManagement() async {
+  _clearScreen();
+  final branches = await TransferService.getAvailableBranches();
+  if (branches.isEmpty) {
+    print('No branches found');
+    _pressEnterToContinue();
+    return;
+  }
+  print('Select Branch');
+  for (int i = 0; i < branches.length; i++) {
+    print('${i + 1}. ${branches[i]}');
+  }
+  final branchIndex =
+      _promptForInt('\nEnter choice:', min: 1, max: branches.length) - 1;
+  final selectedBranch = branches[branchIndex];
+
+  const options = ['Daily Sales Report', 'Inventory Report', 'Back'];
+
+  while (true) {
+    _clearScreen();
+    _printHeader('REPORT GENERATION - ${selectedBranch.toUpperCase()}');
+    final choice = _showMenu(options);
+
+    switch (choice) {
+      case 1:
+        await ReportService.generateDailyReport(selectedBranch);
+        print('\nReport generated in data/branches/$selectedBranch/reports/');
+        _pressEnterToContinue();
+        break;
+      case 2:
+        await ReportService.generateInventoryReport(selectedBranch);
+        print('\nReport generated in data/branches/$selectedBranch/reports/');
+        _pressEnterToContinue();
+        break;
+      case 3:
+        return;
+    }
+  }
+}
+
+/* OPERATION of VIEWING BRANCH INVENTORY BY ADMIN*/
+Future<void> _viewBranchInventory() async {
+  _clearScreen();
+  _printHeader('BRANCH INVENTORY');
+
+  try {
+    final branches = await TransferService.getAvailableBranches();
+    if (branches.isEmpty) {
+      print('No branches found');
+      _pressEnterToContinue();
+      return;
+    }
+
+    // Display clean branch names
+    print('Select branch to view:');
+    for (int i = 0; i < branches.length; i++) {
+      print('${i + 1}. ${branches[i]}');
+    }
+
+    final branchIndex =
+        _promptForInt('\nEnter choice:', min: 1, max: branches.length) - 1;
+    final branchName = branches[branchIndex];
+
+    // Get and display inventory
+    final branchData = await TransferService.getBranchData(branchName);
+    final inventory = branchData['inventory'] as List;
+
+    _clearScreen();
+    _printHeader('${branchName.toUpperCase()} INVENTORY');
+
+    if (inventory.isEmpty) {
+      print('No items in inventory');
+    } else {
+      print('Item                Quantity  Unit');
+      print('-' * 40);
+      for (final item in inventory) {
+        print(
+          '${item['item'].toString().padRight(20)} '
+          '${item['quantity'].toString().padLeft(8)}  '
+          '${item['unit']}',
+        );
+      }
+    }
+    _pressEnterToContinue();
+  } catch (e) {
+    _showError('Inventory Error', e.toString());
+  }
+}
+
+/* OPERATION of HANDLING TRANSFER BY ADMIN*/
+Future<void> _handleTransfer() async {
+  _clearScreen();
+  _printHeader('INVENTORY TRANSFER');
+
+  try {
+    // Get available branches
+    final branches = await TransferService.getAvailableBranches();
+    if (branches.isEmpty) {
+      print('No branches available for transfer');
+      _pressEnterToContinue();
+      return;
+    }
+
+    // Display branches
+    print('Available Branches:');
+    for (int i = 0; i < branches.length; i++) {
+      print('${i + 1}. ${branches[i]}');
+    }
+
+    //  SELECT SOURCE BRANCH
+    final fromIndex =
+        _promptForInt('\nSelect SOURCE branch:', min: 1, max: branches.length) -
+        1;
+    final fromBranch = branches[fromIndex];
+
+    //SELECT DESTINATION BRANCH BY FILTERING
+    final availableDestinations = branches
+        .where((b) => b != fromBranch)
+        .toList();
+    print('\nAvailable Destination Branches:');
+    for (int i = 0; i < availableDestinations.length; i++) {
+      print('${i + 1}. ${availableDestinations[i]}');
+    }
+
+    final toIndex =
+        _promptForInt(
+          '\nSelect DESTINATION branch:',
+          min: 1,
+          max: availableDestinations.length,
+        ) -
+        1;
+    final toBranch = availableDestinations[toIndex];
+    // Get staff ID OF MANAGER
+    final staffId = _promptForString('\nEnter your staff ID:', required: true);
+
+    // GET DETAILS OF ITEM
+    final branchData = await TransferService.getBranchData(fromBranch);
+    final inventory = branchData['inventory'] as List;
+    _clearScreen();
+    _printHeader('AVAILABLE ${fromBranch.toUpperCase()} INVENTORY');
+
+    if (inventory.isEmpty) {
+      print('No items in inventory');
+    } else {
+      print('Item                Quantity  Unit');
+      print('-' * 40);
+      for (final item in inventory) {
+        print(
+          '${item['item'].toString().padRight(20)} '
+          '${item['quantity'].toString().padLeft(8)}  '
+          '${item['unit']}',
+        );
+      }
+    }
+    final itemName = _promptForString(
+      'Enter item name to transfer:',
+      required: true,
+    );
+
+    // Check available quantity
+    final availableQty = await TransferService.getItemStock(
+      fromBranch,
+      itemName,
+    );
+    if (availableQty <= 0) {
+      throw Exception('Item "$itemName" not available in $fromBranch');
+    }
+
+    print('Available quantity in $fromBranch: $availableQty');
+    final quantity = _promptForInt(
+      'Enter quantity to transfer:',
+      min: 1,
+      max: availableQty,
+    );
+    final notes = _promptForString('Enter transfer notes (optional):');
+
+    // Confirm transfer
+    print('\n=== TRANSFER SUMMARY ===');
+    print('From: $fromBranch');
+    print('To: $toBranch');
+    print('Item: $itemName');
+    print('Quantity: $quantity');
+    if (notes.isNotEmpty) print('Notes: $notes');
+
+    final confirm = _promptForString(
+      '\nConfirm transfer? (y/n):',
+    ).toLowerCase();
+    if (confirm != 'y') {
+      print('Transfer cancelled');
+      _pressEnterToContinue();
+      return;
+    }
+    // Process transfer with staff validation
+    await TransferService.transferInventory(
+      itemName: itemName,
+      quantity: quantity,
+      fromBranch: fromBranch,
+      toBranch: toBranch,
+      staffId: staffId, // Now using entered staff ID
+      notes: notes,
+    );
+    print('''\n
+       
+   ███████ ██    ██ ███████ ███████ ███████ ███████ ████████✅
+   ██╔════╝██║   ██║██╔════╝██╔════╝██╔════╝██╔════╝██╔════╝
+   ███████╗██║   ██║██║     ██║     █████╗  ███████╗███████╗
+   ╚════██║██║   ██║██║     ██║     ██╔══╝  ╚════██║╚════██║
+   ███████║╚██████╔╝╚██████╗╚██████╗███████╗███████║███████║
+
+''');
+  } catch (e) {
+    print('\n❌ Error: ${e.toString()}');
+  }
+  _pressEnterToContinue();
+}
+
+/*-------------------------------------------------------------------------------------------------------------------------------------------*/
+/*CASHIER MENU SYSTEM*/
+Future<void> _cashierMainMenu() async {
+  const options = [
+    'Take Attendance',
+    'View Active Orders',
+    'Generate Bill',
+    'Exit System',
+  ];
+
+  while (true) {
+    _clearScreen();
+    _printHeader('CASHIER DASHBOARD');
+    final choice = _showMenu(options);
+
+    switch (choice) {
+      case 1:
+        await _takeattendance();
+        break;
+      case 2:
+        await _viewActiveOrders();
+        break;
+      case 3:
+        await _generateBill();
+        break;
+      case 4:
+        _confirmExit();
+        break;
+    }
+  }
+}
+
+/*SUB OPERATION OF CASHIER MENU SYSTEM*/
 Future<void> _generateBill() async {
   final tables = await TableService.loadTables();
   final occupiedTables = tables.where((t) => t.isOccupied).toList();
@@ -365,7 +739,6 @@ Future<void> _generateBill() async {
     _pressEnterToContinue();
     return;
   }
-
   _clearScreen();
   _printHeader('GENERATE BILL');
   print('Occupied Tables:');
@@ -379,6 +752,43 @@ Future<void> _generateBill() async {
   _pressEnterToContinue();
 }
 
+/*-------------------------------------------------------------------------------------------------------------------------------------------*/
+/*WAITER MENU SYSTEM*/
+Future<void> _waiterMainMenu() async {
+  const options = [
+    'Take Attendance',
+    'View Table Status',
+    'Book Table',
+    'Take Order',
+    'Exit System',
+  ];
+
+  while (true) {
+    _clearScreen();
+    _printHeader('WAITER DASHBOARD');
+    final choice = _showMenu(options);
+
+    switch (choice) {
+      case 1:
+        await _takeattendance();
+        break;
+      case 2:
+        await _viewTableStatus();
+        break;
+      case 3:
+        await _bookTable();
+        break;
+      case 4:
+        await _takeOrder();
+        break;
+      case 5:
+        _confirmExit();
+        break;
+    }
+  }
+}
+
+/*SUB OPERATIONS OF WAITER MENU SYSTEM*/
 Future<void> _viewTableStatus() async {
   final tables = await TableService.loadTables();
   _clearScreen();
@@ -462,70 +872,9 @@ Future<void> _takeOrder() async {
   }
 }
 
-Future<void> _viewInventory() async {
-  final inventory = await InventoryService.getInventory();
-  _clearScreen();
-  _printHeader('CURRENT INVENTORY');
-
-  print('Item                Quantity  Unit');
-  print('-' * 40);
-
-  for (final item in inventory) {
-    print(
-      '${item.name.padRight(20)} '
-      '${item.quantity.toString().padLeft(8)}  '
-      '${item.unit}',
-    );
-  }
-}
-
-Future<void> _addInventoryItem() async {
-  _clearScreen();
-  _printHeader('ADD INVENTORY ITEM');
-
-  final name = _promptForString('Item name:', required: true);
-  final quantity = _promptForInt('Initial quantity:');
-  final unit = _promptForString('Unit (e.g., kg, liters):', required: true);
-
-  await InventoryService.addItem(
-    InventoryItem(name: name, quantity: quantity, unit: unit),
-  );
-
-  print('\nItem added to inventory!✅');
-  _pressEnterToContinue();
-}
-
-Future<void> _updateInventoryItem() async {
-  final inventory = await InventoryService.getInventory();
-  if (inventory.isEmpty) {
-    print('No inventory items found');
-    _pressEnterToContinue();
-    return;
-  }
-
-  _clearScreen();
-  _printHeader('UPDATE INVENTORY');
-  await _viewInventory();
-
-  final itemName = _promptForString(
-    '\nEnter item name to update:',
-    required: true,
-  );
-  final adjustment = _promptForInt('Enter quantity change (+/-):');
-
-  try {
-    await InventoryService.updateQuantity(itemName, adjustment);
-    print('\nInventory updated!✅');
-  } catch (e) {
-    print('\n❌ Error: ${e.toString()}');
-  }
-  _pressEnterToContinue();
-}
-
-/* ========================
-UTILITY FUNCTIONS
- ======================== */
+/* UTILITY FUNCTIONS */
 void _initializeSystem() {
+  AttendanceService.initialize();
   // Create required directories
   Directory('data/invoices').createSync(recursive: true);
 
@@ -534,10 +883,35 @@ void _initializeSystem() {
     'data/users.json',
     'data/menu.json',
     'data/tables.json',
-    'data/inventory.json',
+    'data/branches/lisbon.json',
+    'data/branches/frankfurt.json',
+    'data/branches/pokhara.json',
+    'data/branches/noida.json',
+    'data/branches/oslo.json',
   ];
 
   for (final file in requiredFiles) {
+    if (!File(file).existsSync()) {
+      throw Exception('Missing required file: $file');
+    }
+  }
+  Directory('data/invoices').createSync(recursive: true);
+  Directory('data/branches').createSync(recursive: true); // Add this line
+
+  // Verify required files exist
+  const requiredFiless = [
+    'data/users.json',
+    'data/menu.json',
+    'data/tables.json',
+    'data/staff.json',
+    'data/branches/lisbon.json',
+    'data/branches/frankfurt.json',
+    'data/branches/pokhara.json',
+    'data/branches/noida.json',
+    'data/branches/oslo.json',
+  ];
+
+  for (final file in requiredFiless) {
     if (!File(file).existsSync()) {
       throw Exception('Missing required file: $file');
     }
@@ -550,13 +924,26 @@ void _clearScreen() {
 
 void _printWelcome() {
   print('''
+┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────                                                                
+  🍽️  WELCOME TO   
+                                                                                                                                      
 ███████╗███╗   ███╗ █████╗ ██╗████████╗    ██████╗ ███████╗███████╗████████╗ █████╗ ██╗   ██╗██████╗  █████╗ ███╗   ██╗████████╗
 ██╔════╝████╗ ████║██╔══██╗██║╚══██╔══╝    ██╔══██╗██╔════╝██╔════╝╚══██╔══╝██╔══██╗██║   ██║██╔══██╗██╔══██╗████╗  ██║╚══██╔══╝
 ███████╗██╔████╔██║███████║██║   ██║       ██████╔╝█████╗  ███████╗   ██║   ███████║██║   ██║██████╔╝███████║██╔██╗ ██║   ██║   
 ╚════██║██║╚██╔╝██║██╔══██║██║   ██║       ██╔══██╗██╔══╝  ╚════██║   ██║   ██╔══██║██║   ██║██╔══██╗██╔══██║██║╚██╗██║   ██║   
 ███████║██║ ╚═╝ ██║██║  ██║██║   ██║       ██║  ██║███████╗███████║   ██║   ██║  ██║╚██████╔╝██║  ██║██║  ██║██║ ╚████║   ██║   
-╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝   ╚═╝       ╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝   
-                                                                                                                                
+╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝   ╚═╝       ╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝  
+                                                                                                               ★ ★ ★ ★ ★ 
+  From the ❤️  of Lisbon to the peaks of Pokhara,                        
+  SMAIT serves mouthwatering cuisine across 5 vibrant cities.                                                                                                               
+  ✨Taste tradition, fusion, and freshness — all on one plate!         
+  Visit your nearest SMAIT branch and experience                                                                                 
+  global taste with local love.                                                                                                               
+                                                                                                                                              
+  📍 Now serving in: Lisbon | Frankfurt | Noida | Oslo | Pokhara                                                                            
+  🌐 Visit us: https://smaitrestaurant.com     
+
+└─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────      
   ''');
 }
 
@@ -627,7 +1014,16 @@ void _confirmExit() {
   final input = stdin.readLineSync()?.trim().toLowerCase();
   if (input == 'y') {
     _clearScreen();
-    print('Goodbye! 👋');
+    print('''
+   ██████╗  ██████╗  █████╗ ██████╗      ██████╗ ██╗   ██╗███████╗███████╗
+  ██╔════╝ ██╔═══██╗██╔═══██╗██╔══██╗    ██╔══██╗╚██╗ ██╔╝██╔════╝██╔════╝
+  ██║  ███╗██║   ██║██║   ██║██║  ██║    ██████╔╝ ╚████╔╝ █████╗  █████╗  
+  ██║   ██║██║   ██║██║   ██║██║  ██║    ██╔══██╗  ╚██╔╝  ██╔══╝  ██╔══╝  
+  ╚██████╔╝╚██████╔╝╚██████╔╝██████╔╝    ██████╔╝   ██║   ███████╗███████╗
+   ╚═════╝  ╚═════╝  ╚═════╝ ╚═════╝     ╚═════╝    ╚═╝   ╚══════╝╚══════╝
+
+   Thank you for using SMAIT Restaurant Management System! 
+    ''');
     exit(0);
   }
 }

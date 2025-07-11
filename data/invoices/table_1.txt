@@ -1,8 +1,8 @@
 === INVOICE ===
 Table: 1
-Date: 2025-07-08 16:52:57.764162
+Date: 2025-07-11 14:40:51.977681
 
 Orders:
-Pasta x1 - $4.99
+Margherita Pizza x1 - $12.99
 
-Total: $4.99
+Total: $12.99
