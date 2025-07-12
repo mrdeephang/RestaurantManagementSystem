@@ -180,6 +180,7 @@ Future<void> _menuManagement() async {
     switch (choice) {
       case 1:
         await _displayFullMenu();
+        _pressEnterToContinue();
         break;
       case 2:
         await _addMenuItem();
@@ -195,10 +196,9 @@ Future<void> _menuManagement() async {
 
 /*SUB OPERATIONS OF MENU MANAGEMENT BY ADMIN*/
 Future<void> _displayFullMenu() async {
-  final menu = await MenuService.getMenu();
   _clearScreen();
+  final menu = await MenuService.getMenu();
   _printHeader('CURRENT MENU');
-
   print('ID  Item                Price   Category        Status');
   print('-' * 60);
 
@@ -242,8 +242,8 @@ Future<void> _tableManagement() async {
   const options = [
     'View All Tables',
     'Add New Table',
-    'View Active Tables'
-        'Back',
+    'View Active Tables',
+    'Back',
   ];
 
   while (true) {
@@ -363,6 +363,7 @@ Future<void> _inventoryManagement() async {
     switch (choice) {
       case 1:
         await _viewInventory(selectedBranch);
+        _pressEnterToContinue();
         break;
       case 2:
         await _addInventoryItem(selectedBranch);
@@ -1009,9 +1010,19 @@ void _showError(String title, String message) {
   _pressEnterToContinue();
 }
 
-void _confirmExit() {
-  print('\nAre you sure you want to exit? (y/n)');
+void _confirmExit() async {
+  print('''
+╔══════════════════════════════════╗
+║       CONFIRM EXIT               ║
+╠══════════════════════════════════╣
+║ Are you sure you want to exit?   ║
+║                                  ║
+║   (y) Yes, exit the program      ║
+║   (n) No, return to menu         ║
+╚══════════════════════════════════╝
+''');
   final input = stdin.readLineSync()?.trim().toLowerCase();
+
   if (input == 'y') {
     _clearScreen();
     print('''
