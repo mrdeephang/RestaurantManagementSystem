@@ -154,8 +154,8 @@ restaurant_system/
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/mrdeephang/smait-restaurant.git
-cd smait-restaurant
+git clone https://github.com/mrdeephang/RestaurantManagementSystem.git
+cd RestaurantManagementSystem
 
 # 2. Run the system
 dart run main.dart
@@ -189,3 +189,4 @@ The system currently manages inventory and operations for:
 ## 📄 License
 
 Copyright © 2025. All rights reserved.
+
